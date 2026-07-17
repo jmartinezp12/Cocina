@@ -1,1 +1,464 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>¿Quién trae qué? — Reparto de ingredientes</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap');
 
+  :root{
+    --char: #211714;
+    --char-2: #2c211d;
+    --flame: #e8602c;
+    --flame-2: #ff7d3d;
+    --cheese: #f4b400;
+    --lettuce: #7a9a4e;
+    --bun: #dba463;
+    --cream: #fdf4e3;
+    --paper: #fbead0;
+    --ink: #3a2a1c;
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+
+  html,body{
+    margin:0; min-height:100vh;
+    background:
+      radial-gradient(circle at 20% -10%, #3a2a20 0%, transparent 45%),
+      radial-gradient(circle at 100% 110%, #3a2a20 0%, transparent 40%),
+      var(--char);
+    font-family:'DM Sans', sans-serif;
+    color: var(--cream);
+    overflow-x:hidden;
+  }
+
+  .stage{
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 28px 18px 60px;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+
+  /* ---------- HERO ---------- */
+  .grill-lines{
+    position:absolute; inset:0; pointer-events:none; opacity:.15;
+    background: repeating-linear-gradient(0deg, #000 0 3px, transparent 3px 26px);
+    mask-image: linear-gradient(to bottom, black, transparent 70%);
+  }
+
+  header{ text-align:center; margin-bottom: 8px; position:relative; z-index:1; }
+  .eyebrow{
+    font-size:12px; letter-spacing:.28em; text-transform:uppercase;
+    color: var(--flame-2); font-weight:700; margin-bottom:6px;
+  }
+  h1{
+    font-family:'Anton', sans-serif;
+    font-weight:400;
+    font-size: clamp(34px, 9vw, 46px);
+    line-height:.95;
+    margin: 0 0 6px;
+    letter-spacing: .01em;
+    color: var(--cream);
+    text-shadow: 0 3px 0 rgba(0,0,0,.35);
+  }
+  h1 span{ color: var(--cheese); }
+  .sub{
+    font-size:14px; color:#d8c6ac; max-width: 320px; margin: 0 auto;
+    line-height:1.5;
+  }
+
+  /* ---------- SETUP (names) ---------- */
+  .names-row{
+    display:flex; gap:10px; width:100%; margin: 22px 0 6px;
+  }
+  .name-field{ flex:1; }
+  .name-field label{
+    display:block; font-size:11px; text-transform:uppercase; letter-spacing:.12em;
+    color: var(--flame-2); font-weight:700; margin-bottom:5px;
+  }
+  .name-field input{
+    width:100%; padding:12px 12px; border-radius:10px; border:2px solid #4a3a30;
+    background:#1a1210; color:var(--cream); font-family:'DM Sans'; font-size:15px; font-weight:500;
+    outline:none; transition:border-color .15s;
+  }
+  .name-field input:focus{ border-color: var(--flame-2); }
+
+  /* ---------- TURN INDICATOR ---------- */
+  .turn-wrap{ width:100%; margin-top: 22px; position:relative; z-index:1; }
+  .turn-label{
+    text-align:center; font-size:12px; letter-spacing:.2em; text-transform:uppercase;
+    color:#c9b79b; margin-bottom:10px;
+  }
+  .turn-name{
+    text-align:center; font-family:'Anton'; font-size: 28px; color: var(--cheese);
+    margin-bottom: 18px; min-height:34px;
+    text-shadow: 0 2px 0 rgba(0,0,0,.4);
+  }
+
+  /* ---------- GRILL / FLIP AREA ---------- */
+  .grill{
+    width:100%; aspect-ratio: 1/0.82; max-width:340px;
+    background: radial-gradient(ellipse at 50% 30%, #3d2a20, #1a1210 75%);
+    border-radius: 22px;
+    border: 6px solid #100b09;
+    box-shadow: inset 0 0 40px rgba(0,0,0,.6), 0 10px 30px rgba(0,0,0,.5);
+    display:flex; align-items:center; justify-content:center;
+    position:relative; overflow:hidden;
+    perspective: 900px;
+  }
+
+  .patty-glow{
+    position:absolute; width:70%; height:70%; border-radius:50%;
+    background: radial-gradient(circle, rgba(232,96,44,.35), transparent 70%);
+    filter: blur(6px);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse{ 0%,100%{ opacity:.5; transform:scale(1);} 50%{ opacity:.9; transform:scale(1.08);} }
+
+  .card{
+    width: 210px; height: 210px;
+    position:relative;
+    transform-style: preserve-3d;
+    transition: transform .7s cubic-bezier(.34,1.56,.64,1);
+    cursor:pointer;
+  }
+  .card.flipped{ transform: rotateY(180deg) rotate(0deg); }
+  .card.tossing{ animation: toss .7s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes toss{
+    0%{ transform: translateY(0) rotateY(0) rotate(0); }
+    40%{ transform: translateY(-38px) rotateY(90deg) rotate(8deg); }
+    100%{ transform: translateY(0) rotateY(180deg) rotate(0deg); }
+  }
+
+  .card-face{
+    position:absolute; inset:0; border-radius:18px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    backface-visibility:hidden; padding:16px; text-align:center;
+  }
+  .card-back{
+    background: linear-gradient(155deg, var(--bun), #b97b3e);
+    border: 4px solid #7a4f24;
+    box-shadow: inset 0 0 0 3px rgba(255,255,255,.15);
+  }
+  .card-back .sesame{ position:absolute; border-radius:50%; background:#fff4d6; opacity:.85; }
+  .card-back .cta{
+    font-family:'Anton'; font-size:15px; color:#5a3a1a; letter-spacing:.03em;
+  }
+  .card-front{
+    background: linear-gradient(155deg, var(--paper), #f0d8ad);
+    border: 4px solid var(--flame);
+    transform: rotateY(180deg);
+    box-shadow: inset 0 0 0 3px rgba(255,255,255,.25);
+  }
+  .front-emoji{ font-size:52px; margin-bottom:10px; filter: drop-shadow(0 3px 3px rgba(0,0,0,.25)); }
+  .front-name{
+    font-family:'Anton'; font-size:19px; color:var(--ink); line-height:1.1;
+  }
+  .front-tag{ font-size:11px; color:#8a6a44; margin-top:6px; letter-spacing:.08em; text-transform:uppercase; }
+
+  .flame-btn{
+    margin-top: 22px;
+    font-family:'Anton'; font-size:17px; letter-spacing:.03em;
+    background: linear-gradient(135deg, var(--flame-2), var(--flame));
+    color: var(--cream); border:none; border-radius: 14px;
+    padding: 15px 34px; cursor:pointer;
+    box-shadow: 0 6px 0 #a13d18, 0 10px 20px rgba(0,0,0,.35);
+    transition: transform .08s ease;
+  }
+  .flame-btn:active{ transform: translateY(4px); box-shadow: 0 2px 0 #a13d18; }
+  .flame-btn:disabled{
+    background:#4a3a30; color:#8a7a68; box-shadow:0 6px 0 #2a2018; cursor:default;
+  }
+
+  .hint{ font-size:12px; color:#a3907a; margin-top:10px; min-height:16px; text-align:center; }
+
+  /* ---------- TICKETS (order receipts) ---------- */
+  .tickets{
+    display:flex; gap:14px; width:100%; margin-top:34px;
+  }
+  .ticket{
+    flex:1; background: var(--paper); color: var(--ink); border-radius: 6px;
+    padding: 14px 12px 16px; position:relative;
+    box-shadow: 0 8px 18px rgba(0,0,0,.35);
+    font-family:'DM Sans';
+    min-height: 170px;
+  }
+  .ticket::before, .ticket::after{
+    content:""; position:absolute; left:0; right:0; height:8px;
+    background: repeating-linear-gradient(-45deg, var(--paper) 0 6px, transparent 6px 12px);
+  }
+  .ticket::before{ top:-4px; }
+  .ticket::after{ bottom:-4px; }
+  .ticket-owner{
+    font-family:'Anton'; font-size:15px; text-align:center; margin-bottom:4px;
+    border-bottom: 2px dashed #c9a877; padding-bottom:8px; color:#6a3f1a;
+  }
+  .ticket-count{ text-align:center; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:#a8875f; margin-bottom:8px; }
+  .ticket ul{ list-style:none; margin:0; padding:0; font-size:13px; }
+  .ticket li{
+    padding: 4px 0; border-bottom: 1px dotted #d9c19a;
+    display:flex; align-items:center; gap:6px;
+  }
+  .ticket li:last-child{ border-bottom:none; }
+  .ticket .empty{ font-size:12px; color:#b39a76; font-style:italic; text-align:center; padding-top:14px; }
+
+  /* ---------- FINISHED STATE ---------- */
+  .finished-banner{
+    display:none; width:100%; margin-top:26px; text-align:center;
+    background: linear-gradient(135deg, var(--cheese), #d99a00);
+    color:#3a2400; border-radius:16px; padding:18px 16px;
+    box-shadow: 0 8px 22px rgba(0,0,0,.4);
+    font-family:'Anton'; font-size:20px; line-height:1.3;
+  }
+  .finished-banner.show{ display:block; animation: pop .5s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes pop{ 0%{ transform:scale(.7); opacity:0;} 100%{ transform:scale(1); opacity:1;} }
+  .reset-link{
+    display:inline-block; margin-top:10px; font-family:'DM Sans'; font-weight:700; font-size:12px;
+    text-transform:uppercase; letter-spacing:.1em; color:#3a2400; text-decoration:underline; cursor:pointer;
+  }
+
+  .burger-progress{
+    display:flex; justify-content:center; gap:6px; margin-top:18px; flex-wrap:wrap;
+  }
+  .prog-dot{
+    width:9px; height:9px; border-radius:50%; background:#4a3a30; transition: background .2s;
+  }
+  .prog-dot.done{ background: var(--flame-2); }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration: .001s !important; transition-duration: .001s !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="grill-lines"></div>
+
+  <header>
+    <div class="eyebrow">Noche de hamburguesas</div>
+    <h1>¿Quién trae <span>qué</span>?</h1>
+    <p class="sub">Reparte los 11 ingredientes entre ustedes dos, uno a la vez, directo de la parrilla.</p>
+  </header>
+
+  <div class="names-row" id="setupRow">
+    <div class="name-field">
+      <label for="p1">Jugador 1</label>
+      <input id="p1" maxlength="16" placeholder="Nombre" value="Jugador 1">
+    </div>
+    <div class="name-field">
+      <label for="p2">Jugador 2</label>
+      <input id="p2" maxlength="16" placeholder="Nombre" value="Jugador 2">
+    </div>
+  </div>
+
+  <div class="turn-wrap">
+    <div class="turn-label">Turno de</div>
+    <div class="turn-name" id="turnName">—</div>
+  </div>
+
+  <div class="grill">
+    <div class="patty-glow"></div>
+    <div class="card" id="card">
+      <div class="card-face card-back" id="cardBack">
+        <span class="sesame" style="width:8px;height:8px;top:24%;left:32%"></span>
+        <span class="sesame" style="width:7px;height:7px;top:20%;left:50%"></span>
+        <span class="sesame" style="width:8px;height:8px;top:26%;left:66%"></span>
+        <span class="sesame" style="width:6px;height:6px;top:34%;left:42%"></span>
+        <span class="sesame" style="width:6px;height:6px;top:34%;left:58%"></span>
+        <div class="cta">Toca<br>para voltear</div>
+      </div>
+      <div class="card-face card-front" id="cardFront">
+        <div class="front-emoji" id="frontEmoji">🍔</div>
+        <div class="front-name" id="frontName">—</div>
+        <div class="front-tag">te toca traer</div>
+      </div>
+    </div>
+  </div>
+
+  <button class="flame-btn" id="flipBtn">Voltear ingrediente</button>
+  <div class="hint" id="hint">Quedan 11 ingredientes en la parrilla</div>
+
+  <div class="burger-progress" id="progress"></div>
+
+  <div class="tickets">
+    <div class="ticket">
+      <div class="ticket-owner" id="ticket1Owner">Jugador 1</div>
+      <div class="ticket-count" id="ticket1Count">0 ingredientes</div>
+      <ul id="ticket1List"><li class="empty">Aún nada en la bolsa</li></ul>
+    </div>
+    <div class="ticket">
+      <div class="ticket-owner" id="ticket2Owner">Jugador 2</div>
+      <div class="ticket-count" id="ticket2Count">0 ingredientes</div>
+      <ul id="ticket2List"><li class="empty">Aún nada en la bolsa</li></ul>
+    </div>
+  </div>
+
+  <div class="finished-banner" id="finishedBanner">
+    🎉 ¡Hamburguesa completa! 🎉
+    <div class="reset-link" id="resetLink">Repartir de nuevo</div>
+  </div>
+</div>
+
+<script>
+  const INGREDIENTS = [
+    { name: "Pan hamburguesa", emoji: "🍞" },
+    { name: "Carne molida", emoji: "🥩" },
+    { name: "Cebolla larga", emoji: "🌱" },
+    { name: "Ajos", emoji: "🧄" },
+    { name: "Finas hierbas", emoji: "🌿" },
+    { name: "Pimienta", emoji: "🧂" },
+    { name: "Cebolla cabezona", emoji: "🧅" },
+    { name: "Tocineta", emoji: "🥓" },
+    { name: "Tomate", emoji: "🍅" },
+    { name: "Cebolla", emoji: "🧅" },
+    { name: "Salsa BBQ", emoji: "🍯" }
+  ];
+
+  let deck = [];
+  let currentPlayer = 0; // 0 or 1
+  let assignments = [[], []];
+  let busy = false;
+  let started = false;
+
+  const el = id => document.getElementById(id);
+  const p1Input = el('p1'), p2Input = el('p2');
+  const turnName = el('turnName');
+  const card = el('card');
+  const frontEmoji = el('frontEmoji');
+  const frontName = el('frontName');
+  const flipBtn = el('flipBtn');
+  const hint = el('hint');
+  const progress = el('progress');
+  const finishedBanner = el('finishedBanner');
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i = a.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function playerName(i){
+    const v = (i === 0 ? p1Input.value : p2Input.value).trim();
+    return v || (i === 0 ? "Jugador 1" : "Jugador 2");
+  }
+
+  function buildProgressDots(){
+    progress.innerHTML = "";
+    for(let i = 0; i < INGREDIENTS.length; i++){
+      const d = document.createElement('div');
+      d.className = 'prog-dot';
+      progress.appendChild(d);
+    }
+  }
+
+  function updateHeaderNames(){
+    el('ticket1Owner').textContent = playerName(0);
+    el('ticket2Owner').textContent = playerName(1);
+    if(!started){
+      turnName.textContent = playerName(0);
+    }
+  }
+
+  function updateTurnDisplay(){
+    turnName.textContent = playerName(currentPlayer);
+  }
+
+  function renderTicket(i){
+    const list = el(i === 0 ? 'ticket1List' : 'ticket2List');
+    const count = el(i === 0 ? 'ticket1Count' : 'ticket2Count');
+    const items = assignments[i];
+    count.textContent = items.length + (items.length === 1 ? " ingrediente" : " ingredientes");
+    if(items.length === 0){
+      list.innerHTML = '<li class="empty">Aún nada en la bolsa</li>';
+      return;
+    }
+    list.innerHTML = items.map(it => `<li>${it.emoji} ${it.name}</li>`).join('');
+  }
+
+  function updateProgress(){
+    const done = INGREDIENTS.length - deck.length;
+    const dots = progress.querySelectorAll('.prog-dot');
+    dots.forEach((d, idx) => d.classList.toggle('done', idx < done));
+  }
+
+  function resetGame(){
+    deck = shuffle(INGREDIENTS);
+    currentPlayer = 0;
+    assignments = [[], []];
+    started = false;
+    busy = false;
+    card.classList.remove('flipped', 'tossing');
+    frontEmoji.textContent = "🍔";
+    frontName.textContent = "—";
+    flipBtn.disabled = false;
+    flipBtn.textContent = "Voltear ingrediente";
+    hint.textContent = `Quedan ${deck.length} ingredientes en la parrilla`;
+    finishedBanner.classList.remove('show');
+    updateHeaderNames();
+    updateTurnDisplay();
+    renderTicket(0);
+    renderTicket(1);
+    buildProgressDots();
+    updateProgress();
+  }
+
+  function flip(){
+    if(busy || deck.length === 0) return;
+    busy = true;
+    started = true;
+    flipBtn.disabled = true;
+
+    const item = deck.pop();
+
+    // reset card to back-facing instantly if it was showing front from before
+    card.classList.remove('flipped');
+    void card.offsetWidth; // reflow
+    card.classList.add('tossing');
+
+    setTimeout(() => {
+      frontEmoji.textContent = item.emoji;
+      frontName.textContent = item.name;
+    }, 330);
+
+    setTimeout(() => {
+      card.classList.add('flipped');
+      assignments[currentPlayer].push(item);
+      renderTicket(currentPlayer);
+      updateProgress();
+
+      if(deck.length === 0){
+        hint.textContent = "¡La parrilla está vacía!";
+        flipBtn.textContent = "Todo repartido";
+        flipBtn.disabled = true;
+        finishedBanner.classList.add('show');
+      } else {
+        hint.textContent = `Quedan ${deck.length} ingrediente${deck.length === 1 ? '' : 's'} en la parrilla`;
+        currentPlayer = 1 - currentPlayer;
+        updateTurnDisplay();
+        flipBtn.disabled = false;
+      }
+      busy = false;
+    }, 700);
+
+    setTimeout(() => card.classList.remove('tossing'), 720);
+  }
+
+  flipBtn.addEventListener('click', flip);
+  card.addEventListener('click', () => { if(!started || card.classList.contains('flipped') === false) flip(); });
+  el('resetLink').addEventListener('click', resetGame);
+  p1Input.addEventListener('input', updateHeaderNames);
+  p2Input.addEventListener('input', updateHeaderNames);
+
+  resetGame();
+</script>
+
+</body>
+</html>
